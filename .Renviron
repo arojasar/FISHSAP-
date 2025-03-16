@@ -1,0 +1,5 @@
+DB_HOST=ep-lingering-mountain-a4d7nbm3-pooler.us-east-1.aws.neon.tech
+DB_NAME=neondb
+DB_USER=neondb_owner
+DB_PASSWORD=npg_qAo6YIQRUT4z
+DB_PORT=5432
