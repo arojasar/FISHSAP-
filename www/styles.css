@@ -1,0 +1,41 @@
+/* www/styles.css */
+body {
+    font-family: Arial, sans-serif;
+}
+
+h1 {
+    color: #2c3e50;
+}
+
+button {
+    margin: 5px;
+}
+
+#ref_form_ui {
+    padding: 10px;
+}
+
+#ref_form_ui div {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#conflict_resolution_ui {
+    padding: 20px;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+/* Asegurar que los elementos de Shiny sean visibles */
+.shiny-html-output {
+    display: block !important;
+    visibility: visible !important;
+}
+
+table.dataTable {
+    width: 100% !important;
+    margin: 0 !important;
+}
