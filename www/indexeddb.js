@@ -1,75 +1,78 @@
-// Crear la base de datos IndexedDB con Dexie
+// www/indexeddb.js
+
 const db = new Dexie("FISHSAP_DB");
 
-// Definir la estructura de las tablas
 db.version(1).stores({
   sitios: "site_code, site_name",
   especies: "species_code, common_name, scientific_name, constant_a, constant_b",
   categorias: "cat_code, cat_name",
-  faena_principal: "registro, Sincronizado"
+  faena_principal: "registro, Sincronizado",
+  clasifica: "clas_code, clas_name, Sincronizado",  // Añadida
+  subgrupo: "subgrupo_code, subgrupo_name, Sincronizado"  // Añadida
 });
 
-// Cargar datos iniciales (mantengo los originales de tu archivo)
 db.on("populate", function() {
   db.sitios.bulkPut([
     { site_code: "SIT01", site_name: "Puerto 1" },
-    { site_code: "SIT02", site_name: "Puerto 2" },
-    // Aquí estaban tus ~300 líneas de datos iniciales. Por espacio, solo dejo ejemplos,
-    // pero puedes copiar tus datos completos desde el archivo original
-    { site_code: "SIT03", site_name: "Puerto 3" }
+    { site_code: "SIT02", site_name: "Puerto 2" }
   ]);
   db.especies.bulkPut([
-    { species_code: "ESP01", common_name: "Sardina", scientific_name: "Sardina pilchardus", constant_a: "0.01", constant_b: "2.5" },
-    // Tus datos originales aquí
-    { species_code: "ESP02", common_name: "Atún", scientific_name: "Thunnus albacares", constant_a: "0.02", constant_b: "2.8" }
+    { species_code: "ESP01", common_name: "Sardina", scientific_name: "Sardina pilchardus", constant_a: "0.01", constant_b: "2.5" }
   ]);
   db.categorias.bulkPut([
-    { cat_code: "CAT01", cat_name: "Fresco" },
-    // Tus datos originales aquí
-    { cat_code: "CAT02", cat_name: "Congelado" }
+    { cat_code: "CAT01", cat_name: "Fresco" }
   ]);
   db.faena_principal.bulkPut([
     { registro: "Faena 1", Sincronizado: 0 },
     { registro: "Faena 2", Sincronizado: 0 }
-    // Tus datos originales aquí
+  ]);
+  db.clasifica.bulkPut([
+    { clas_code: "CLAS01", clas_name: "Clasificación 1", Sincronizado: 0 }
+  ]);
+  db.subgrupo.bulkPut([
+    { subgrupo_code: "SUB01", subgrupo_name: "Subgrupo 1", Sincronizado: 0 }
   ]);
 });
 
-// Actualizar la interfaz cuando se recibe el mensaje "update"
 Shiny.addCustomMessageHandler("update", function(message) {
   console.log("Recibido mensaje update:", message);
   loadTableData(message.table);
   showForm(message.table);
 });
 
-// Cargar datos de una tabla y enviarlos a Shiny
 function loadTableData(tableName) {
+  if (!db[tableName]) {
+    console.error("Tabla no encontrada en IndexedDB:", tableName);
+    return;
+  }
   db[tableName].toArray().then(data => {
     console.log("Datos cargados de", tableName, ":", data);
     if (tableName === "faena_principal") {
-      Shiny.setInputValue("faena_table_data", data, { priority: "event" }); // Para "Ingreso de Datos"
+      Shiny.setInputValue("faena_table_data", data, { priority: "event" });
     } else {
-      Shiny.setInputValue("ref_table_output_data", data, { priority: "event" }); // Para "Tablas de Referencia"
+      Shiny.setInputValue("ref_table_output_data", data, { priority: "event" });
     }
   }).catch(error => {
     console.error("Error al cargar datos:", error);
   });
 }
 
-// Guardar datos enviados desde Shiny
 Shiny.addCustomMessageHandler("saveData", function(message) {
   console.log("Recibido mensaje saveData:", message);
   const tableName = message.table;
   const data = message.data;
+  if (!db[tableName]) {
+    console.error("Tabla no encontrada en IndexedDB:", tableName);
+    return;
+  }
   db[tableName].put(data).then(() => {
     console.log("Datos guardados en", tableName);
-    loadTableData(tableName); // Recargar la tabla después de guardar
+    loadTableData(tableName);
   }).catch(error => {
     console.error("Error al guardar:", error);
   });
 });
 
-// Mostrar formulario dinámico según la tabla seleccionada
 Shiny.addCustomMessageHandler("showForm", function(message) {
   console.log("Recibido mensaje showForm:", message);
   const tableName = message.table;
@@ -96,11 +99,20 @@ Shiny.addCustomMessageHandler("showForm", function(message) {
     formFields = [
       { id: "registro", label: "Registro", type: "text", required: true }
     ];
+  } else if (tableName === "clasifica") {
+    formFields = [
+      { id: "clas_code", label: "Código de Clasificación", type: "text", required: true },
+      { id: "clas_name", label: "Nombre de Clasificación", type: "text", required: true }
+    ];
+  } else if (tableName === "subgrupo") {
+    formFields = [
+      { id: "subgrupo_code", label: "Código de Subgrupo", type: "text", required: true },
+      { id: "subgrupo_name", label: "Nombre de Subgrupo", type: "text", required: true }
+    ];
   }
   Shiny.setInputValue("form_fields", formFields);
 });
 
-// Sincronizar datos con el servidor (funcionalidad parcial, necesita endpoint)
 Shiny.addCustomMessageHandler("syncData", function(message) {
   console.log("Recibido mensaje syncData:", message);
   db.faena_principal.where("Sincronizado").equals(0).toArray().then(data => {
@@ -119,24 +131,28 @@ Shiny.addCustomMessageHandler("syncData", function(message) {
   });
 });
 
-// Actualizar estado de sincronización tras guardar en Neon
 Shiny.addCustomMessageHandler("updateSyncStatus", function(message) {
   console.log("Actualizando estado de sincronización:", message);
   const tableName = message.table;
   const registro = message.registro;
   const Sincronizado = message.Sincronizado;
+  if (!db[tableName]) {
+    console.error("Tabla no encontrada en IndexedDB:", tableName);
+    return;
+  }
   db[tableName].where("registro").equals(registro).modify({ Sincronizado: Sincronizado }).then(() => {
     console.log("Estado de sincronización actualizado en", tableName);
-    loadTableData(tableName); // Recargar la tabla
+    loadTableData(tableName);
   }).catch(error => {
     console.error("Error al actualizar estado:", error);
   });
 });
 
-// Inicializar carga de datos al abrir la aplicación
 db.on("ready", function() {
   loadTableData("sitios");
   loadTableData("especies");
   loadTableData("categorias");
   loadTableData("faena_principal");
+  loadTableData("clasifica");
+  loadTableData("subgrupo");
 });
