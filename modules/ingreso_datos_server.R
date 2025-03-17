@@ -1,6 +1,6 @@
 # modules/ingreso_datos_server.R
 
-ingreso_datos_server <- function(id, selected_submodule) {
+ingreso_datos_server <- function(id, central_conn = NULL, selected_submodule) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
