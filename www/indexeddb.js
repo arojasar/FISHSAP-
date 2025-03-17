@@ -7,8 +7,9 @@ db.version(1).stores({
   especies: "species_code, common_name, scientific_name, constant_a, constant_b",
   categorias: "cat_code, cat_name",
   faena_principal: "registro, Sincronizado",
-  clasifica: "clas_code, clas_name, Sincronizado",  // Añadida
-  subgrupo: "subgrupo_code, subgrupo_name, Sincronizado"  // Añadida
+  clasifica: "clas_code, clas_name, Sincronizado",
+  subgrupo: "subgrupo_code, subgrupo_name, Sincronizado",
+  grupos: "grupo_code, grupo_name, Sincronizado"  // Añadida para "Grupos"
 });
 
 db.on("populate", function() {
@@ -31,6 +32,9 @@ db.on("populate", function() {
   ]);
   db.subgrupo.bulkPut([
     { subgrupo_code: "SUB01", subgrupo_name: "Subgrupo 1", Sincronizado: 0 }
+  ]);
+  db.grupos.bulkPut([
+    { grupo_code: "GRP01", grupo_name: "Grupo 1", Sincronizado: 0 }
   ]);
 });
 
@@ -79,8 +83,8 @@ Shiny.addCustomMessageHandler("showForm", function(message) {
   let formFields = [];
   if (tableName === "sitios") {
     formFields = [
-      { id: "site_code", label: "Código del sitio", type: "text", required: true },
-      { id: "site_name", label: "Nombre del sitio", type: "text", required: true }
+      { id: "site_code", label: "Código", type: "text", required: true },
+      { id: "site_name", label: "Nombre", type: "text", required: true }
     ];
   } else if (tableName === "especies") {
     formFields = [
@@ -108,6 +112,11 @@ Shiny.addCustomMessageHandler("showForm", function(message) {
     formFields = [
       { id: "subgrupo_code", label: "Código de Subgrupo", type: "text", required: true },
       { id: "subgrupo_name", label: "Nombre de Subgrupo", type: "text", required: true }
+    ];
+  } else if (tableName === "grupos") {
+    formFields = [
+      { id: "grupo_code", label: "Código", type: "text", required: true },
+      { id: "grupo_name", label: "Nombre", type: "text", required: true }
     ];
   }
   Shiny.setInputValue("form_fields", formFields);
@@ -140,7 +149,17 @@ Shiny.addCustomMessageHandler("updateSyncStatus", function(message) {
     console.error("Tabla no encontrada en IndexedDB:", tableName);
     return;
   }
-  db[tableName].where("registro").equals(registro).modify({ Sincronizado: Sincronizado }).then(() => {
+  // Ajustar la clave primaria según la tabla
+  const primaryKey = {
+    sitios: "site_code",
+    especies: "species_code",
+    categorias: "cat_code",
+    faena_principal: "registro",
+    clasifica: "clas_code",
+    subgrupo: "subgrupo_code",
+    grupos: "grupo_code"
+  }[tableName];
+  db[tableName].where(primaryKey).equals(registro).modify({ Sincronizado: Sincronizado }).then(() => {
     console.log("Estado de sincronización actualizado en", tableName);
     loadTableData(tableName);
   }).catch(error => {
@@ -155,4 +174,5 @@ db.on("ready", function() {
   loadTableData("faena_principal");
   loadTableData("clasifica");
   loadTableData("subgrupo");
+  loadTableData("grupos");
 });
