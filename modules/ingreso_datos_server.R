@@ -8,34 +8,57 @@ ingreso_datos_server <- function(id, central_conn = NULL, selected_submodule) {
       req(selected_submodule())
       tagList(
         textInput(ns("registro"), "Registro"),
+        textInput(ns("fecha_zarpe"), "Fecha de Zarpe"),
+        textInput(ns("fecha_arribo"), "Fecha de Arribo"),
+        textInput(ns("sitio_desembarque"), "Sitio de Desembarque"),
+        textInput(ns("subarea"), "Subarea"),
+        textInput(ns("registrador"), "Registrador"),
+        textInput(ns("embarcacion"), "Embarcación"),
+        numericInput(ns("pescadores"), "Pescadores", value = 1),
+        textInput(ns("hora_salida"), "Hora de Salida"),
+        textInput(ns("hora_arribo"), "Hora de Arribo"),
+        textInput(ns("horario"), "Horario"),
+        numericInput(ns("galones"), "Galones", value = 0),
         actionButton(ns("save_button"), "Guardar")
       )
     })
 
     output$faena_table <- renderDT({
-      req(input$faena_table_data)  # Esperar datos desde IndexedDB
-      input$faena_table_data       # Mostrar datos dinámicos
+      req(input$faena_table_data)
+      input$faena_table_data
     })
 
     observeEvent(input$save_button, {
-      # Preparar datos para guardar
+      message("Botón Guardar presionado en ingreso_datos_server. Enviando datos a IndexedDB...")
       form_data <- list(
         registro = input$registro,
-        Sincronizado = 0  # Estado inicial: no sincronizado
+        fecha_zarpe = input$fecha_zarpe,
+        fecha_arribo = input$fecha_arribo,
+        sitio_desembarque = input$sitio_desembarque,
+        subarea = input$subarea,
+        registrador = input$registrador,
+        embarcacion = input$embarcacion,
+        pescadores = input$pescadores,
+        hora_salida = input$hora_salida,
+        hora_arribo = input$hora_arribo,
+        horario = input$horario,
+        galones = input$galones,
+        estado_verificacion = "Pendiente",
+        verificado_por = "",
+        fecha_verificacion = "",
+        creado_por = "system",
+        fecha_creacion = as.character(Sys.time()),
+        modificado_por = "system",
+        fecha_modificacion = as.character(Sys.time()),
+        Sincronizado = 0
       )
-      print("Guardando datos de faena en IndexedDB:", form_data)
-
-      # Guardar en IndexedDB
       session$sendCustomMessage("saveData", list(table = "faena_principal", data = form_data))
 
-      # Intentar sincronizar con Neon si hay conexión
       if (!is.null(central_conn)) {
         tryCatch({
-          form_df <- data.frame(registro = input$registro, Sincronizado = 0, stringsAsFactors = FALSE)
+          form_df <- as.data.frame(form_data, stringsAsFactors = FALSE)
           dbWriteTable(central_conn, "faena_principal", form_df, append = TRUE)
           print("Datos guardados en Neon:", form_df)
-
-          # Actualizar estado de sincronización en IndexedDB
           session$sendCustomMessage("updateSyncStatus", list(table = "faena_principal", registro = input$registro, Sincronizado = 1))
         }, error = function(e) {
           print("Error al guardar en Neon:", e$message)
